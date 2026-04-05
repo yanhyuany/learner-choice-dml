@@ -3,7 +3,8 @@ from .learners import (
     LassoLearner,
     ElasticNetLearner,
     RandomForestLearner,
-    CausalForestLearner
+    CausalForestLearner,
+    NeuralNetLearner,
 )
 
 from .models import PLR, IRM

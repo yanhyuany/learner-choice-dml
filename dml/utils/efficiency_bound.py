@@ -10,8 +10,6 @@ def plr_efficiency_bound(Y_tilde: np.ndarray,
     
     V* = E[D_tilde^2]^{-1} * E[epsilon^2] * E[D_tilde^2]^{-1}
     where epsilon = Y_tilde - theta * D_tilde
-    
-    Returns V* and the ratio of actual variance to V*.
     """
     n = len(Y_tilde)
     epsilon = Y_tilde - theta * D_tilde
@@ -30,8 +28,6 @@ def compare_learner_efficiency(Y_tilde: np.ndarray,
                                actual_var: float) -> dict:
     """
     Compare a learner's actual variance against the efficiency bound.
-    
-    Returns the efficiency ratio: actual_var / V*
     A ratio close to 1 means the learner is near-efficient.
     """
     bound = plr_efficiency_bound(Y_tilde, D_tilde, theta)
@@ -55,13 +51,12 @@ def plr_efficiency_bound_jax(Y_tilde: np.ndarray,
     Y_j = jnp.array(Y_tilde)
     D_j = jnp.array(D_tilde)
 
-    # define score function
     def score(theta):
         psi = D_j * (Y_j - D_j * theta)
         return jnp.mean(psi)
 
-    # use JAX to compute Jacobian
-    J = float(jax.grad(score)(theta))
+    # negate to match numpy convention: J = E[D_tilde^2] > 0
+    J = -float(jax.grad(score)(theta))
     epsilon = Y_tilde - theta * D_tilde
     sigma2 = float(jnp.mean(jnp.array(epsilon) ** 2))
     n = len(Y_tilde)

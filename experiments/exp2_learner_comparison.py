@@ -31,13 +31,9 @@ def generate_data(n_obs: int, alpha: float = ALPHA,
 
 def run_single_rep(learner_class, n_obs: int, alpha: float,
                    random_state: int) -> dict:
-    """
-    Run one replication for a given learner and sample size.
-    Returns theta, covered (bool), and se.
-    """
     X, Y, D = generate_data(n_obs, alpha, random_state)
 
-    plr = PLR(learner=learner_class(), n_splits=5, random_state=66)
+    plr = PLR(learner=learner_class(), n_splits=5, random_state=random_state)  # fixed
     plr.fit(Y, D, X)
     results = plr.predict()
 
@@ -55,22 +51,19 @@ def run_single_rep(learner_class, n_obs: int, alpha: float,
         "rmse": (theta - alpha) ** 2
     }
 
+
 def run_experiment_2(n_reps: int = 500) -> pd.DataFrame:
-    """
-    Experiment 2: Five learners × four sample sizes.
-    Metrics: bias, RMSE, CI coverage rate.
-    """
     records = []
 
     for learner_name, learner_class in LEARNERS.items():
         for n_obs in N_VALUES:
             print(f"[{learner_name}] n={n_obs}...")
-            
+
             biases, rmses, covered = [], [], []
 
             for rep in range(n_reps):
                 try:
-                    res = run_single_rep(learner_class, n_obs, ALPHA, 
+                    res = run_single_rep(learner_class, n_obs, ALPHA,
                                         random_state=rep)
                     biases.append(res['bias'])
                     rmses.append(res['rmse'])
@@ -92,12 +85,10 @@ def run_experiment_2(n_reps: int = 500) -> pd.DataFrame:
 
     return pd.DataFrame(records)
 
+
 def plot_experiment_2(df: pd.DataFrame, save_path: str = None):
-    """
-    Plot bias, RMSE, and CI coverage for all learners across sample sizes.
-    """
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-    
+
     learner_colors = {
         "Lasso": "steelblue",
         "ElasticNet": "coral",
@@ -105,32 +96,32 @@ def plot_experiment_2(df: pd.DataFrame, save_path: str = None):
         "NeuralNet": "purple",
         "CausalForest": "orange"
     }
-    
+
     metrics = [
         ("bias", "Bias", "Bias (θ̂ - θ₀)"),
         ("rmse", "RMSE", "RMSE"),
         ("coverage", "CI Coverage Rate", "Coverage Rate")
     ]
-    
+
     for ax, (metric, title, ylabel) in zip(axes, metrics):
         for learner_name, color in learner_colors.items():
             subset = df[df["learner"] == learner_name]
             ax.plot(subset["n_obs"], subset[metric],
                     marker='o', label=learner_name, color=color)
-        
+
         if metric == "bias":
             ax.axhline(y=0, color='gray', linestyle='--', alpha=0.5)
         if metric == "coverage":
             ax.axhline(y=0.95, color='black', linestyle='--',
-                      linewidth=1.5, label='Target: 95%')
+                       linewidth=1.5, label='Target: 95%')
             ax.set_ylim([0.5, 1.0])
-        
+
         ax.set_xlabel('Sample size (n)')
         ax.set_ylabel(ylabel)
         ax.set_title(title)
         ax.legend(fontsize=8)
         ax.set_xscale('log')
-    
+
     plt.suptitle('Learner Comparison: Bias, RMSE, CI Coverage',
                  fontsize=13, fontweight='bold')
     plt.tight_layout()

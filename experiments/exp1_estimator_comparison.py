@@ -32,10 +32,13 @@ def estimate_nonorthogonal(X, Y, D, learner):
 
 
 def estimate_dml_no_split(X, Y, D, learner):
-    Y_hat = learner.fit(X, Y).predict(X)
-    Y_tilde = Y - Y_hat
-    D_hat = learner.__class__().fit(X, D).predict(X)
+    # use separate instances to avoid state contamination
+    learner_y = learner.__class__()
+    learner_d = learner.__class__()
+    Y_hat = learner_y.fit(X, Y).predict(X)
+    D_hat = learner_d.fit(X, D).predict(X)
     D_tilde = D - D_hat
+    Y_tilde = Y - Y_hat
     theta = (D_tilde @ Y_tilde) / (D_tilde @ D_tilde)
     psi = D_tilde * (Y_tilde - D_tilde * theta)
     J = np.mean(D_tilde ** 2)
@@ -50,12 +53,9 @@ def estimate_dml_crossfit(X, Y, D, learner):
     results = plr.predict()
     return results['theta'], np.sqrt(results['var'])
 
+
 def run_single_rep(learner_instance, n_obs: int, alpha: float,
                    random_state: int) -> dict:
-    """
-    Run one replication for a given learner.
-    Returns standardized estimates for all three methods.
-    """
     X, Y, D = generate_data(n_obs, alpha, random_state)
 
     t1, s1 = estimate_nonorthogonal(X, Y, D, learner_instance())
@@ -70,13 +70,10 @@ def run_single_rep(learner_instance, n_obs: int, alpha: float,
         return {"nonorth": r1, "nosplit": r2, "crossfit": r3}
     return None
 
+
 def run_experiment_1(learner_name: str, learner_class,
                      n_obs: int = 500, alpha: float = 0.5,
                      n_reps: int = 500) -> dict:
-    """
-    Run experiment 1 for a given learner.
-    Returns standardized estimates for all three methods.
-    """
     results = {"nonorth": [], "nosplit": [], "crossfit": []}
 
     for rep in range(n_reps):
@@ -91,11 +88,9 @@ def run_experiment_1(learner_name: str, learner_class,
     print(f"[{learner_name}] Valid reps: {len(results['nonorth'])}/{n_reps}")
     return {k: np.array(v) for k, v in results.items()}
 
+
 def plot_experiment_1(results: dict, learner_name: str,
                       save_path: str = None):
-    """
-    Plot standardized distribution for all three estimators.
-    """
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
 
     labels = {
@@ -123,6 +118,7 @@ def plot_experiment_1(results: dict, learner_name: str,
     if save_path:
         plt.savefig(save_path, dpi=150, bbox_inches='tight')
     plt.show()
+
 
 LEARNERS = {
     "Lasso": LassoLearner,

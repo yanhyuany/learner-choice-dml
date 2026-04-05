@@ -51,37 +51,31 @@ class NeuralNetLearner(BaseNuisanceLearner):
         self.model = None
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> "NeuralNetLearner":
-        # fix random seed
         torch.manual_seed(self.random_state)
         np.random.seed(self.random_state)
 
         n, input_dim = X.shape
 
-        # train/val split
         n_val = max(1, int(n * self.val_frac))
         n_train = n - n_val
         X_train, X_val = X[:n_train], X[n_train:]
         y_train, y_val = y[:n_train], y[n_train:]
 
-        # convert to tensors
         X_train_t = torch.FloatTensor(X_train)
         y_train_t = torch.FloatTensor(y_train).unsqueeze(1)
         X_val_t = torch.FloatTensor(X_val)
         y_val_t = torch.FloatTensor(y_val).unsqueeze(1)
 
-        # build model
         self.model = _MLP(input_dim, self.hidden_sizes)
         optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
         loss_fn = nn.MSELoss()
 
-        # early stopping
         best_val_loss = float('inf')
         patience_counter = 0
         best_state = None
 
         for epoch in range(self.max_epochs):
             self.model.train()
-            # mini-batch training
             idx = torch.randperm(n_train)
             for start in range(0, n_train, self.batch_size):
                 batch_idx = idx[start:start + self.batch_size]
@@ -91,7 +85,6 @@ class NeuralNetLearner(BaseNuisanceLearner):
                 loss.backward()
                 optimizer.step()
 
-            # validation
             self.model.eval()
             with torch.no_grad():
                 val_loss = loss_fn(self.model(X_val_t), y_val_t).item()
@@ -106,15 +99,14 @@ class NeuralNetLearner(BaseNuisanceLearner):
                 if patience_counter >= self.patience:
                     break
 
-        # restore best model
         if best_state is not None:
             self.model.load_state_dict(best_state)
 
         return self
-    
+
     def predict(self, X: np.ndarray) -> np.ndarray:
         self.model.eval()
         with torch.no_grad():
             X_t = torch.FloatTensor(X)
-            y_pred = self.model(X_t).squeeze().numpy()
+            y_pred = self.model(X_t).squeeze(-1).numpy()  # fixed: squeeze(-1)
         return y_pred
