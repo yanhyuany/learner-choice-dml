@@ -1,2 +1,2 @@
-# learner-choice-dml
-Does learner choice matter in Double/Debiased Machine Learning? PLR · IRM · simulation · empirical application
+# dml-nuisance-comparison
+From-scratch implementation of Double/Debiased Machine Learning (DML) with controlled comparison of nuisance learners. Evaluates how learner choice affects bias, RMSE, and CI coverage via Monte Carlo simulation. Includes JAX orthogonality verification, convergence rate analysis (Exp 3), hyperparameter tuning experiments (Exp 4, cf. Bach et al. 2024), and DGP robustness checks (Exp 5). PLR · IRM · Lasso · Random Forest · Neural Network
