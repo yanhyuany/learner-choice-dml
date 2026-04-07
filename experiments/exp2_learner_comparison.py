@@ -9,16 +9,22 @@ from dml.learners.neural_net import NeuralNetLearner
 from dml.learners.causal_forest import CausalForestLearner
 from dml.models.plr import PLR
 
+# main learners
 LEARNERS = {
     "Lasso": LassoLearner,
-    "ElasticNet": ElasticNetLearner,
     "RandomForest": RandomForestLearner,
     "NeuralNet": NeuralNetLearner,
+}
+
+# appendix learners
+LEARNERS_APPENDIX = {
+    "ElasticNet": ElasticNetLearner,
     "CausalForest": CausalForestLearner,
 }
 
 N_VALUES = [200, 500, 1000, 2000]
 ALPHA = 0.5
+
 
 def generate_data(n_obs: int, alpha: float = ALPHA,
                   random_state: int = None):
@@ -33,29 +39,31 @@ def run_single_rep(learner_class, n_obs: int, alpha: float,
                    random_state: int) -> dict:
     X, Y, D = generate_data(n_obs, alpha, random_state)
 
-    plr = PLR(learner=learner_class(), n_splits=5, random_state=random_state)  # fixed
+    plr = PLR(learner=learner_class(), n_splits=5, random_state=random_state)
     plr.fit(Y, D, X)
     results = plr.predict()
 
     theta = results['theta']
-    se = np.sqrt(results['var'])
     ci_lower = results['ci_lower']
     ci_upper = results['ci_upper']
     covered = ci_lower < alpha < ci_upper
 
     return {
         "theta": theta,
-        "se": se,
         "covered": covered,
         "bias": theta - alpha,
         "rmse": (theta - alpha) ** 2
     }
 
 
-def run_experiment_2(n_reps: int = 500) -> pd.DataFrame:
+def run_experiment_2(n_reps: int = 500,
+                     learners: dict = None) -> pd.DataFrame:
+    if learners is None:
+        learners = LEARNERS
+
     records = []
 
-    for learner_name, learner_class in LEARNERS.items():
+    for learner_name, learner_class in learners.items():
         for n_obs in N_VALUES:
             print(f"[{learner_name}] n={n_obs}...")
 
@@ -91,20 +99,21 @@ def plot_experiment_2(df: pd.DataFrame, save_path: str = None):
 
     learner_colors = {
         "Lasso": "steelblue",
-        "ElasticNet": "coral",
         "RandomForest": "green",
         "NeuralNet": "purple",
-        "CausalForest": "orange"
+        "ElasticNet": "coral",
+        "CausalForest": "orange",
     }
 
     metrics = [
         ("bias", "Bias", "Bias (θ̂ - θ₀)"),
         ("rmse", "RMSE", "RMSE"),
-        ("coverage", "CI Coverage Rate", "Coverage Rate")
+        ("coverage", "CI Coverage Rate", "Coverage Rate"),
     ]
 
     for ax, (metric, title, ylabel) in zip(axes, metrics):
-        for learner_name, color in learner_colors.items():
+        for learner_name in df["learner"].unique():
+            color = learner_colors.get(learner_name, "gray")
             subset = df[df["learner"] == learner_name]
             ax.plot(subset["n_obs"], subset[metric],
                     marker='o', label=learner_name, color=color)
